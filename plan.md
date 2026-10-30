@@ -379,102 +379,237 @@ and are not sufficient to finalize the split.
                           documentation and       
                           report                  
   -----------------------------------------------------------------------
+Computing Environment
+We selected Kaggle Notebook with GPU acceleration for model development.
+Component	Configuration
+GPU	NVIDIA Tesla T4
+GPU memory	15.64 GB
+CPU	4 cores
+RAM	33.66 GB
+Python	3.13.15
+PyTorch	2.11.0+cu128
+CUDA	12.8
+Available disk initially	20.94 GB
 
-### Stage 2 tasks
+Created the project directory:
+/kaggle/working/flood_mapping_project/
+│
+├── data/
+├── checkpoints/
+├── logs/
+├── results/
+├── configs/
+└── figures/
 
-1.  Confirm six input channels and their order.
-2.  Decide and implement SAR linear-to-dB conversion.
-3.  Calculate normalization statistics using training data only.
-4.  Convert the original mask to a binary target while retaining
-    original labels.
-5.  Apply `valid_mask` to loss and metrics.
-6.  Inspect missing, non-finite, extreme and invalid values.
-7.  Decide whether to filter samples by valid fraction or temporal gaps.
-8.  Build a streaming TAR loader; avoid extracting all shards.
-9.  Verify shapes, value ranges and visualizations before training.
 
-Do not begin model training until preprocessing has been tested.
+A project configuration file was also created at:
+configs/project_config.json
 
-## 9. Compute environment: Kaggle vs Google Colab
 
-Kaggle has been used for exploration. Colab is also an option, but it is
-not automatically faster or more capable. Actual GPU, VRAM, RAM, disk,
-session limits and availability depend on the account and runtime
-allocation.
+2. Dataset Selection and Download
+Selected dataset: Kuro Siwo WebDataset.
 
-Run this in each environment to compare:
+Repository: https://huggingface.co/datasets/orion-ai-lab/Kuro-Siwo-Webdataset
 
-``` python
-import torch
+The repository contains:
+Dataset split	Number of shards	Approximate size
+train_GRD	5	46.76 GB
+test_GRD	12	122.77 GB
+Total	17	169.53 GB
 
-print("PyTorch:", torch.__version__)
-print("CUDA available:", torch.cuda.is_available())
+Due to Kaggle's limited disk space, we decided not to download the entire dataset.
 
-if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
-    print("GPU memory (GB):",
-          round(torch.cuda.get_device_properties(0).total_memory / 1e9, 2))
-```
+Downloaded the first training shard:
+train_GRD/shard-00000.tar
 
-Also inspect CPU, RAM and disk:
 
-``` python
-import os, shutil, psutil
+- File size: approximately 10.91 GB.
+- Number of samples: 6,000.
+- Data was kept inside the TAR archive without extraction.
+3. Dataset Structure
+Each sample represents a geographical patch of 224 × 224 pixels.
 
-print("CPU cores:", os.cpu_count())
-print("RAM (GB):", round(psutil.virtual_memory().total / 1e9, 2))
-print("Free disk (GB):", round(shutil.disk_usage("/").free / 1e9, 2))
-```
+All samples contain the following ten fields:
+Field	Description
+sec1_vv	First pre-flood VV polarization
+sec1_vh	First pre-flood VH polarization
+sec2_vv	Second pre-flood VV polarization
+sec2_vh	Second pre-flood VH polarization
+flood_vv	Post-flood VV polarization
+flood_vh	Post-flood VH polarization
+mask	Ground-truth segmentation mask
+valid_mask	Valid-pixel indicator
+dem	Digital Elevation Model
+info	JSON metadata
 
-Choose based on actual hardware, session stability and duration,
-available disk, Internet access, and checkpoint persistence. Keep
-notebooks portable between Kaggle and Colab.
+All numerical arrays have:
+- Shape: (1, 224, 224)
+- Data type: float32
+Proposed model input
+We selected six SAR channels in the following order:
+1. sec1_vv
+2. sec1_vh
+3. sec2_vv
+4. sec2_vh
+5. flood_vv
+6. flood_vh
+Expected model input shape:
+(batch_size, 6, 224, 224)
 
-## 10. Reproducibility and documentation practices
 
-For every notebook: - Give it a clear title and objective. - Explain why
-each major operation is performed. - Keep configuration in one
-section. - Set and record random seeds. - Record package versions and
-hardware. - Print dataset counts and shapes. - Save preprocessing
-configuration and split IDs. - Fit normalization statistics on training
-data only. - Keep test data separate until final evaluation. - Save
-checkpoints and training logs. - Record decisions and changes.
+DEM will initially be excluded to isolate the contribution of multi-temporal SAR observations.
+Ground-truth labels
+The mask contains three possible classes:
+Value	Meaning
+0	Background / non-water
+1	Permanent water
+2	Floodwater
 
-Suggested notebook sequence:
+Our initial task is binary flood segmentation:
+target = (mask == 2).astype("float32")
 
-1.  `01_dataset_exploration.ipynb`
-2.  `02_data_preprocessing.ipynb`
-3.  `03_baseline_change_detection.ipynb`
-4.  `04_unet_baseline.ipynb`
-5.  `05_multitemporal_attention_unet.ipynb`
-6.  `06_evaluation_and_comparison.ipynb`
 
-## 11. Current status and immediate next action
 
-**Completed:** Initial exploration of one training shard, including
-sample structure, SAR scale, sampled event IDs, mask classes,
-valid-pixel fractions, temporal gaps, and visual inspection.
+Therefore:
+- Floodwater = 1
+- Background and permanent water = 0
+Invalid pixels will be excluded from loss calculations and evaluation metrics using valid_mask.
+4. Dataset-Level Analysis
+A complete metadata scan of the first training shard identified:
+Property	Result
+Total samples	6,000
+Unique flood events	17
+Unique AOIs	9
+Patches containing floodwater	5,131
+Patches with zero floodwater	869
+Samples with gvalid=True	6,000
 
-**Not completed:** Full-dataset inspection, final event split,
-preprocessing, normalization, data loader, baselines, model training,
-and evaluation.
+Flood coverage statistics
+Statistic	Coverage
+Mean	7.656%
+Standard deviation	12.280%
+Minimum	0%
+25th percentile	0.381%
+Median	2.591%
+75th percentile	9.461%
+Maximum	99.657%
 
-**Immediate next action:** Start a clean notebook with a reproducible
-setup cell. Then inspect the runtime and storage before deciding where
-to run the full pipeline. Do not download more shards until storage and
-the data-split strategy are checked.
+The distribution is highly skewed. Most patches contain relatively little floodwater, while some patches contain extensive flooding.
 
-## 12. Interpretation notes
+This indicates class imbalance that must be considered during model training and evaluation.
+Event distribution
+The shard contains 17 flood events.
 
--   A Kuro Siwo sample is a multi-layer satellite data patch, not a
-    single RGB photograph.
--   SAR arrays can be visualized as grayscale images, but the model
-    receives numerical arrays.
--   Example sample values used in explanations are illustrative;
-    experiments must use values read from the actual TAR samples.
--   The 1,500-sample exploration statistics describe every-fourth-sample
-    inspection of `train_GRD/shard-00000.tar`, not the complete dataset.
--   Event counts listed above are sampled counts, not total event
-    counts.
--   The six-channel binary setup is a proposed experiment design; the
-    original dataset retains three mask classes.
+The most significant observation is that event 1111004 contributes 3,246 patches, representing approximately 54.1% of the entire shard.
+
+This creates a potential event-imbalance problem.
+
+Random patch-level splitting could cause leakage between training and validation because patches from the same flood event could appear in both sets.
+5. SAR Data Analysis
+The six SAR channels were inspected using 100 samples.
+
+All channels contain positive float32 values in linear backscatter scale.
+Numerical statistics
+Channel	Mean	Standard deviation	Median
+sec1_vv	0.04953	0.05162	0.04234
+sec1_vh	0.00938	0.00920	0.00720
+sec2_vv	0.04438	0.04927	0.03720
+sec2_vh	0.00813	0.00928	0.00570
+flood_vv	0.10614	0.08574	0.10374
+flood_vh	0.02376	0.01814	0.02516
+
+Additional observations:
+- No zero-valued pixels were found in the inspected valid SAR pixels.
+- No non-finite values were found.
+- The inspected samples had a valid-pixel percentage of 99.970%.
+SAR visualization
+A representative sample was visualized using:
+- Pre-flood 1 VV and VH.
+- Pre-flood 2 VV and VH.
+- Post-flood VV and VH.
+- DEM.
+- Ground-truth mask.
+- Valid-pixel mask.
+The visualization confirmed that the six channels have distinct backscatter characteristics and that SAR imagery exhibits speckle noise.
+Linear-to-decibel conversion
+The SAR data is stored in linear scale. We investigated conversion into decibels:
+\[
+X_{dB}=10\log_{10}(\max(X,10^{-4}))
+\]
+
+The resulting histograms showed that the dB representation provides a more interpretable distribution than the original linear scale.
+
+For initial preprocessing, we propose:
+1. Convert linear SAR backscatter to dB.
+2. Perform channel-wise standardization.
+3. Calculate normalization statistics using training data only.
+\[
+X_{norm}=\frac{X_{dB}-\mu_c}{\sigma_c}
+\]
+
+The final normalization parameters have not yet been calculated.
+6. Flood Event and Geographical Analysis
+The metadata contains two important identifiers:
+- actid: Flood event identifier.
+- aoiid: Area of interest identifier.
+The event–AOI relationship was analyzed to understand geographical overlap.
+Important event relationships
+Event	Number of AOIs	AOIs
+502	6	1, 2, 3, 4, 5, 7
+518	2	1, 2
+567	2	8, 15
+
+The remaining events in this shard each belong to one AOI.
+AOI distribution
+AOI 1 contains 5,300 samples, representing approximately 88.33% of the shard.
+
+Other AOIs contain substantially fewer samples.
+Connected event–AOI groups
+A graph-based analysis identified three disconnected groups:
+Group	Flood events	AOIs	Samples
+1	567	8, 15	96
+2	15 events	1, 2, 3, 4, 5, 7	5,837
+3	562	13	67
+
+This reveals that geographical diversity is highly imbalanced.
+
+A geographical generalization experiment may be difficult to establish conclusively using this shard alone.
+7. Current Research Decisions
+The following decisions have been established or proposed:
+Component	Current decision
+Task	Binary flood segmentation
+Input	Six temporal SAR channels
+Patch size	224 × 224
+Label	mask == 2
+Invalid pixels	Excluded using valid_mask
+Initial model	Conventional U-Net baseline
+Proposed model	Multi-Temporal Attention U-Net
+SAR transformation	Linear to dB
+Normalization	Channel-wise standardization
+Primary evaluation	Unseen flood events
+Secondary evaluation	Geographical generalization, if sufficient data is available
+
+The planned model comparisons are:
+1. Simple change-detection baseline.
+2. Conventional U-Net.
+3. Proposed Multi-Temporal Attention U-Net.
+Evaluation metrics:
+- Intersection over Union (IoU).
+- F1-score.
+- Precision.
+- Recall.
+8. Next Steps
+Current stage: Dataset investigation
+The following tasks remain:
+1. Inspect remaining training shards: Examine shard-00001.tar through shard-00004.tar without downloading all of them permanently.
+2. Complete metadata collection: Identify every flood event, AOI and sample count across all training shards.
+3. Finalize data splitting: Create event-wise training, validation and testing partitions. Ensure that no flood event appears in multiple partitions.
+4. Investigate event imbalance: Determine how to handle events with very few samples and the dominance of event 1111004.
+5. Build an efficient TAR dataset loader: Read samples directly from TAR archives without extracting the entire dataset.
+6. Calculate normalization statistics: Use only the training partition.
+7. Build preprocessing pipeline: Implement SAR conversion, normalization, binary masks and valid-pixel handling.
+8. Visualize processed samples: Verify the final tensors and labels.
+9. Implement baseline models: Start with change detection and conventional U-Net.
+10. Implement the proposed Multi-Temporal Attention U-Net.
+11. Train, evaluate and compare all models.
+12. Perform event-wise generalization analysis and document results.
