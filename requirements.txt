@@ -1,0 +1,12 @@
+torch
+torchvision
+timm
+transformers
+huggingface_hub
+numpy
+pandas
+scipy
+matplotlib
+rasterio
+tifffile
+requests

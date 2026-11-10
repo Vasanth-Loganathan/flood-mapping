@@ -1,0 +1,21 @@
+train,test,score,IoU,F1,ensemble IoU
+Sen1Floods11,Sen1Floods11 test,flood_noperm,0.524 +/- 0.012,0.688,0.533
+Sen1Floods11,Sen1Floods11 test,water,0.661 +/- 0.011,0.796,0.669
+Kuro Siwo,Sen1Floods11 test,flood_noperm,0.233 +/- 0.124,0.367,0.263
+Kuro Siwo,Sen1Floods11 test,water (+JRC),0.473 +/- 0.067,0.640,0.511
+Sen1Floods11,Sen1Floods11 Bolivia (held-out region),flood_noperm,0.608 +/- 0.065,0.755,0.635
+Sen1Floods11,Sen1Floods11 Bolivia (held-out region),water,0.625 +/- 0.062,0.768,0.649
+Kuro Siwo,Sen1Floods11 Bolivia (held-out region),flood_noperm,0.230 +/- 0.371,0.285,0.073
+Kuro Siwo,Sen1Floods11 Bolivia (held-out region),water (+JRC),0.275 +/- 0.339,0.364,0.131
+Kuro Siwo,Kuro Siwo validation,flood_noperm,0.656 +/- 0.016,0.792,0.661
+Kuro Siwo,Kuro Siwo validation,flood (standard),0.532 +/- 0.003,0.695,0.537
+Sen1Floods11,Kuro Siwo validation,flood_noperm,0.577 +/- 0.062,0.730,0.591
+Sen1Floods11,Kuro Siwo validation,water,0.611 +/- 0.056,0.757,0.625
+Kuro Siwo,"Kuro Siwo fresh test, shard 1 (post hoc)",flood_noperm,0.599 +/- 0.004,0.749,0.605
+Kuro Siwo,"Kuro Siwo fresh test, shard 1 (post hoc)",flood (standard),0.521 +/- 0.011,0.685,0.527
+Sen1Floods11,"Kuro Siwo fresh test, shard 1 (post hoc)",flood_noperm,0.370 +/- 0.168,0.526,0.388
+Sen1Floods11,"Kuro Siwo fresh test, shard 1 (post hoc)",water,0.398 +/- 0.091,0.566,0.409
+Kuro Siwo,"Kuro Siwo fresh test, shard 2 (post hoc)",flood_noperm,0.246 +/- 0.039,0.394,0.251
+Kuro Siwo,"Kuro Siwo fresh test, shard 2 (post hoc)",flood (standard),0.110 +/- 0.017,0.199,0.114
+Sen1Floods11,"Kuro Siwo fresh test, shard 2 (post hoc)",flood_noperm,0.138 +/- 0.071,0.238,0.132
+Sen1Floods11,"Kuro Siwo fresh test, shard 2 (post hoc)",water,0.575 +/- 0.060,0.729,0.578

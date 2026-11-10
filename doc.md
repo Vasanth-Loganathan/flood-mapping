@@ -433,3 +433,10 @@ Event-mean IoU: `base` 0.600 +/- 0.217, `mt_g2` 0.602 +/- 0.216 (range 0.24-0.91
 - **Notebook changes during the DEM/test round:** DEM downloads go to `/tmp/kuro_siwo_dem` (disk space on `/kaggle/working`); a REPAIR cell rebuilds the dataset classes after the dataset definition was changed; the freeze cell was simplified (no hashes).
 - **Back up** `data/processed/`, `results/`, `checkpoints/` and the metadata CSVs outside `/kaggle/working` (for example as a Kaggle dataset). 27 checkpoints are needed for the final evaluation.
 - Set an `HF_TOKEN` to avoid Hub rate limits; keep only one large shard on disk at a time.
+
+## 5.12 Final experiments (Sen1Floods11, recent baselines, explainability) - done
+* Recent baselines (3 seeds, same recipe, lr fixed a priori): validation IoU U-Net/ResNet-50 0.693 +/- 0.007 (ens. 0.703), SegFormer-B2 0.696 +/- 0.003 (ens. 0.700) vs plain 0.684. Below the +0.015 rule. Fresh test (post hoc, exploratory): single 0.587 / 0.583 vs 0.586 (plain), ensembles 0.606 / 0.589 vs 0.599. No measurable difference.
+* Sen1Floods11 (446 chips; 252/89/90 + 15 Bolivia): post-only U-Net trained on it: test 0.524 +/- 0.012 (water 0.661), Bolivia 0.608 +/- 0.065. Kuro-trained zero-shot: 0.233 +/- 0.124 (Bolivia 0.230 +/- 0.371, ensemble 0.073). Sen->Kuro: val 0.577, shard 1 0.370, shard 2 0.138.
+* Explainability: Shapley (val) post VV 0.469 of 0.685 total; mt_g2 dates: pre1 0.056, pre2 0.046, post 0.572. Grad-CAM covers flood in events 417/277, almost nothing in 427. Gate shows no consistent link to flooded pixels.
+* Paper updated (v2, 9 pages); only the repository link and affiliation remain as placeholders.
+* Cleaned notebook delivered (`flood_mapping_clean.ipynb`), tested on fake data on CPU, not on Kaggle.

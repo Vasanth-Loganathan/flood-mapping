@@ -1,0 +1,18 @@
+{
+  "headline_plain": {
+    "model": "base"
+  },
+  "proposed_multitemporal": {
+    "model": "mt_g2"
+  },
+  "exploratory": [],
+  "mixed_ensemble": {
+    "models": [
+      "base",
+      "mt_g2"
+    ],
+    "adopted_on_validation": false
+  },
+  "dem_arrays_needed_for_test": false,
+  "validation_decision_file": "dem_decision.json"
+}

@@ -1,0 +1,12 @@
+region,split,Kuro-Siwo-trained,Sen1Floods11-trained
+Bolivia,bolivia,0.073,0.635
+Ghana,test,0.086,0.353
+India,test,0.117,0.605
+Mekong,test,0.699,0.841
+Nigeria,test,0.867,0.861
+Pakistan,test,0.084,0.19
+Paraguay,test,0.002,0.416
+Somalia,test,0.154,0.456
+Spain,test,0.379,0.637
+Sri-Lanka,test,0.0,0.207
+USA,test,0.169,0.357
